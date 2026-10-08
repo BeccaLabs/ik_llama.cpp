@@ -257,17 +257,17 @@ static __device__ __forceinline__ void ggml_cuda_syncwarp() {
 
 static __device__ __forceinline__ float warp_reduce_sum(float x) {
 #pragma unroll
-    for (int mask = 16; mask > 0; mask >>= 1) {
-        x += __shfl_xor_sync(0xffffffff, x, mask, 32);
+    for (int mask = WARP_SIZE/2; mask > 0; mask >>= 1) {
+        x += __shfl_xor_sync(0xffffffff, x, mask, WARP_SIZE);
     }
     return x;
 }
 
 static __device__ __forceinline__ float2 warp_reduce_sum(float2 a) {
 #pragma unroll
-    for (int mask = 16; mask > 0; mask >>= 1) {
-        a.x += __shfl_xor_sync(0xffffffff, a.x, mask, 32);
-        a.y += __shfl_xor_sync(0xffffffff, a.y, mask, 32);
+    for (int mask = WARP_SIZE/2; mask > 0; mask >>= 1) {
+        a.x += __shfl_xor_sync(0xffffffff, a.x, mask, WARP_SIZE);
+        a.y += __shfl_xor_sync(0xffffffff, a.y, mask, WARP_SIZE);
     }
     return a;
 }
@@ -277,16 +277,16 @@ static __device__ __forceinline__ half2 warp_reduce_sum(half2 a) {
 
 #if defined(GGML_USE_HIPBLAS) && defined(__HIP_PLATFORM_AMD__)
 #pragma unroll
-    for (int mask = 16; mask > 0; mask >>= 1) {
-        const half2 a_other = __shfl_xor_sync(0xffffffff, a, mask, 32);
+    for (int mask = WARP_SIZE/2; mask > 0; mask >>= 1) {
+        const half2 a_other = __shfl_xor_sync(0xffffffff, a, mask, WARP_SIZE);
         reinterpret_cast<half&>(a.x) +=  __low2half(a_other);
         reinterpret_cast<half&>(a.y) += __high2half(a_other);
     }
     return a;
 #else
 #pragma unroll
-    for (int mask = 16; mask > 0; mask >>= 1) {
-        a = __hadd2(a, __shfl_xor_sync(0xffffffff, a, mask, 32));
+    for (int mask = WARP_SIZE/2; mask > 0; mask >>= 1) {
+        a = __hadd2(a, __shfl_xor_sync(0xffffffff, a, mask, WARP_SIZE));
     }
     return a;
 #endif // defined(GGML_USE_HIPBLAS) && defined(__HIP_PLATFORM_AMD__)
@@ -299,8 +299,8 @@ static __device__ __forceinline__ half2 warp_reduce_sum(half2 a) {
 
 static __device__ __forceinline__ float warp_reduce_max(float x) {
 #pragma unroll
-    for (int mask = 16; mask > 0; mask >>= 1) {
-        x = fmaxf(x, __shfl_xor_sync(0xffffffff, x, mask, 32));
+    for (int mask = WARP_SIZE/2; mask > 0; mask >>= 1) {
+        x = fmaxf(x, __shfl_xor_sync(0xffffffff, x, mask, WARP_SIZE));
     }
     return x;
 }
@@ -343,8 +343,8 @@ static __device__ __forceinline__ half2 ggml_cuda_hmax2(const half2 a, const hal
 static __device__ __forceinline__ half2 warp_reduce_max(half2 x) {
 #if !(defined(GGML_USE_HIPBLAS) && defined(__HIP_PLATFORM_AMD__)) && __CUDA_ARCH__ >= CC_PASCAL
 #pragma unroll
-   for (int mask = 16; mask > 0; mask >>= 1) {
-       x = ggml_cuda_hmax2(x, __shfl_xor_sync(0xffffffff, x, mask, 32));
+   for (int mask = WARP_SIZE/2; mask > 0; mask >>= 1) {
+       x = ggml_cuda_hmax2(x, __shfl_xor_sync(0xffffffff, x, mask, WARP_SIZE));
    }
    return x;
 #else
